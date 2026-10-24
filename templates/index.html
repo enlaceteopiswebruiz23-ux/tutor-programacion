@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutor de Programación Básica con IA</title>
+<style>
+  :root { --fondo:#f4f6fb; --tarjeta:#fff; --texto:#1c2333; --acento:#3b5bdb; --suave:#e7ecff; --borde:#d9deea; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#12151f; --tarjeta:#1b2030; --texto:#e8ebf4; --acento:#7c93ff; --suave:#262e4a; --borde:#2f3650; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--fondo); color:var(--texto); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; display:flex; flex-direction:column; height:100vh; }
+  h1 { font-size: 1.3rem; margin: 8px 0; }
+  .barra { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  select, button, textarea { font: inherit; border:1px solid var(--borde); border-radius:8px; padding:8px 10px; background:var(--tarjeta); color:var(--texto); }
+  button { background:var(--acento); color:#fff; border:none; cursor:pointer; }
+  button.sec { background:var(--tarjeta); color:var(--texto); border:1px solid var(--borde); }
+  button:disabled { opacity:.6; cursor:wait; }
+  #chat { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:8px 0; }
+  .msg { max-width:90%; padding:10px 12px; border-radius:12px; white-space:pre-wrap; line-height:1.45; word-break:break-word; }
+  .user { align-self:flex-end; background:var(--acento); color:#fff; }
+  .bot { align-self:flex-start; background:var(--tarjeta); border:1px solid var(--borde); }
+  .etiquetas { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .etq { font-size:.75rem; background:var(--suave); padding:2px 8px; border-radius:99px; }
+  .error { align-self:center; color:#c92a2a; }
+  form { display:flex; gap:8px; padding-top:8px; }
+  textarea { flex:1; resize:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🧑‍🏫 Tutor de Programación Básica</h1>
+  <div class="barra">
+    <label for="nivel">Nivel:</label>
+    <select id="nivel">
+      <option value="principiante">Principiante</option>
+      <option value="intermedio">Intermedio</option>
+    </select>
+    <button type="button" class="sec" id="nueva">Nueva conversación</button>
+  </div>
+  <div id="chat">
+    <div class="msg bot">¡Hola! Pregúntame sobre variables, condicionales, bucles o funciones en Python.</div>
+  </div>
+  <form id="formulario">
+    <textarea id="pregunta" rows="2" placeholder="Escribe tu duda..." required></textarea>
+    <button type="submit" id="enviar">Enviar</button>
+  </form>
+</main>
+<script>
+const chat = document.getElementById("chat");
+const form = document.getElementById("formulario");
+const caja = document.getElementById("pregunta");
+const boton = document.getElementById("enviar");
+
+function agregar(texto, clase) {
+  const d = document.createElement("div");
+  d.className = "msg " + clase;
+  d.textContent = texto;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pregunta = caja.value.trim();
+  if (!pregunta) return;
+  agregar(pregunta, "user");
+  caja.value = "";
+  boton.disabled = true;
+  const espera = agregar("Pensando...", "bot");
+  try {
+    const res = await fetch("/preguntar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pregunta, nivel: document.getElementById("nivel").value }),
+    });
+    const datos = await res.json();
+    espera.remove();
+    if (!res.ok) { agregar(datos.error || "Error", "error"); return; }
+    const burbuja = agregar(datos.respuesta, "bot");
+    const et = document.createElement("div");
+    et.className = "etiquetas";
+    [["Tema: " + datos.tema], ["Dificultad: " + datos.dificultad],
+     [datos.uso_apuntes ? "📘 Usó los apuntes" : "Sin apuntes"]].forEach(([t]) => {
+      const s = document.createElement("span"); s.className = "etq"; s.textContent = t; et.appendChild(s);
+    });
+    burbuja.appendChild(et);
+  } catch (err) {
+    espera.remove();
+    agregar("No se pudo conectar con el servidor.", "error");
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+caja.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+});
+
+document.getElementById("nueva").addEventListener("click", async () => {
+  await fetch("/nueva", { method: "POST" });
+  chat.innerHTML = "";
+  agregar("Conversación nueva. ¿Cuál es tu duda?", "bot");
+});
+</script>
+</body>
+</html>
