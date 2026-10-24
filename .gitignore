@@ -1,0 +1,13 @@
+# Llaves y configuración privada
+.env
+
+# Entorno virtual
+.venv/
+
+# Archivos generados por Python
+__pycache__/
+*.pyc
+
+# Sistema y editor
+.DS_Store
+.vscode/
